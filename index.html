@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="CPV Inspect">
+<meta name="theme-color" content="#1f4e79">
+<title>CPV Field Inspection</title>
+<link id="icon" rel="icon"><link id="aicon" rel="apple-touch-icon"><link id="mf" rel="manifest">
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#1b1f24;--mu:#667;--bd:#d6dae0;--ac:#1f4e79;--ok:#2e7d32;--wa:#b26a00}
+@media(prefers-color-scheme:dark){:root{--bg:#121417;--card:#1d2025;--tx:#e8eaed;--mu:#9aa0a6;--bd:#33373d;--ac:#6ea8dc}}
+*{box-sizing:border-box}body{margin:0;font:17px -apple-system,system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:env(safe-area-inset-top) 0 90px}
+header{background:var(--ac);color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}h1{font-size:20px;margin:0}
+main{padding:12px;max-width:760px;margin:auto}.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.sh{display:flex;justify-content:space-between;align-items:center;padding:16px;font-weight:600;cursor:pointer;min-height:56px}
+.sh .pc{font-size:14px;color:var(--mu);font-weight:500}.sb{padding:0 16px 16px;display:none}.open .sb{display:block}
+label.f{display:block;margin:12px 0 4px;font-size:15px;color:var(--mu)}.req::after{content:" *";color:#c62828}
+input[type=text],input[type=number],input[type=date],input[type=time],select,textarea{width:100%;font-size:17px;padding:12px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);color:var(--tx);min-height:48px}
+textarea{min-height:80px}.ck{display:flex;align-items:center;gap:12px;padding:10px 0;min-height:48px;font-size:17px}.ck input{width:26px;height:26px}
+button{font-size:17px;padding:12px 16px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);min-height:48px}
+button.p{background:var(--ac);color:#fff;border:0}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+.th{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.th div{position:relative}.th img{width:84px;height:84px;object-fit:cover;border-radius:6px}
+.th b{position:absolute;top:-6px;right:-6px;background:#c62828;color:#fff;border-radius:50%;width:24px;height:24px;text-align:center;line-height:24px;font-size:14px}
+.bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--bd);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px}
+.bar button{flex:1}.note{font-size:13px;color:var(--mu)}#warn{color:var(--wa);font-size:14px}.sub{font-weight:600;margin-top:16px}
+</style></head><body>
+<header><h1>CPV Field Inspection</h1><div class="note" style="color:#dde" id="st">Autosaves on this device</div></header>
+<main>
+<div class="card" style="padding:16px">
+<label class="f">Job</label><select id="jobs"></select>
+<div class="row" style="margin-top:8px"><button id="newj">New inspection</button><button id="delj">Delete job</button></div>
+<label class="f req">Property address</label><input type="text" id="addr" placeholder="Street, City, CA ZIP">
+<div class="row" style="margin-top:8px"><button id="exp">Export JSON</button></div>
+<div id="warn"></div></div>
+<div id="secs"></div>
+<div class="card" style="padding:16px"><div id="out" class="note"></div></div>
+</main>
+<div class="bar"><button class="p" id="send">Send to Report Drafter</button></div>
+<script>
+"use strict";
+const EMAIL="Rafael@coastalpropertyvaluations.com";
+const QC=["","Q1","Q2","Q3","Q4","Q5","Q6"],CC=["","C1","C2","C3","C4","C5","C6"],YN=["","Yes","No","Unknown"];
+const AGE=["","0-5 yrs ago","6-10 yrs ago","11-15 yrs ago","15+ yrs ago","Unknown"];
+// field: [id,label,type,opts/req]; types t,n,d,tm,s,c,ta,ph(photos),h(heading)
+const S=[
+["Assignment",[["client","Client","t",1],["use","Intended use","s",["","Purchase","Refinance","Internal sample","Private/estate","Other"]],["borrower","Borrower","t"],
+["occ","Occupancy","s",["","Owner","Tenant","Vacant"],1],["listing","Currently listed / listed past 12 mo?","s",["","Not listed","Listed","Listed past 12 mo","Unknown"]],
+["contract","Sales contract status","s",["","None","Under contract","Unknown"]],["hoa","HOA / PUD","s",["","None","HOA","PUD"]],["dues","HOA dues ($/mo)","n"],
+["present","People present","t"],["idate","Inspection date","d",1],["itime","Inspection time","tm"]]],
+["Exterior & site",[["h1","Photos","h"],["p_front","Front photo","c",1],["p_rear","Rear photo","c",1],["p_street","Street scene photo","c",1],["ph_ext","Exterior photos","ph"],
+["found","Foundation","s",["","Slab","Raised/crawl","Basement","Mixed"]],["walls","Exterior walls","s",["","Stucco","Wood siding","Brick","Block","Mixed"]],
+["roof","Roof material","s",["","Comp shingle","Concrete tile","Clay tile","Wood shake","Flat/built-up","Metal"]],["roofage","Roof age (yrs)","n"],["roofc","Roof condition","s",["","Good","Average","Fair","Poor"]],
+["gutters","Gutters","s",YN],["windows","Windows","s",["","Dual pane vinyl","Single pane aluminum","Wood","Mixed"]],
+["gstalls","Garage stalls","n",1],["gtype","Garage type","s",["","Attached","Detached","Built-in","Carport","None"],1],["drive","Driveway","s",["","Concrete","Asphalt","Pavers","None"]],
+["fence","Fencing","t"],["pool","Pool / spa","s",["","None","Pool","Spa","Pool + spa"]],["solar","Solar","s",["","None","Owned","Leased","PPA","Unknown"]],
+["view","View","s",["","Residential","Park","Water","Mountain","Commercial","Traffic"]],["infl","Site influences (traffic, power lines, commercial)","t"],
+["drain","Drainage","s",["","Appears adequate","Concerns noted"]],["ease","Easements / encroachments","t"],["adu","ADU / outbuildings","t"],["extdef","Exterior deficiencies","ta"]]],
+["Interior",[["rooms","Total rooms","n",1],["beds","Bedrooms","n",1],["fb","Full baths","n",1],["hb","Half baths","n",1],
+["h2","Photos","h"],["p_kit","Kitchen","c",1],["p_liv","Living room","c",1],["p_din","Dining","c"],["p_bed","Each bedroom","c",1],["p_fb","Each full bath","c",1],["p_hb","Each half bath","c",1],["p_oth","Other rooms","c"],["ph_int","Interior photos","ph"],
+["floor","Flooring","t"],["kitupd","Kitchen updated?","s",YN],["kityr","Kitchen update year","n"],["bathupd","Baths updated?","s",YN],["bathyr","Bath update year","n"],
+["heat","Heating","s",["","Forced air","Wall furnace","Radiant","Heat pump","None"]],["cool","Cooling","s",["","Central AC","Mini-split","Window/wall","Evaporative","None"]],
+["wh_strap","Water heater strapped","c"],["wh_loc","Water heater location","s",["","Garage","Exterior closet","Interior","Tankless"]],
+["smoke","Smoke detectors present","c",1],["co","CO detectors present","c",1],["fp","Fireplace","s",["","None","Wood","Gas","Insert"]],
+["laundry","Laundry","s",["","Garage","Interior","Exterior","None"]],["attic","Attic / crawl access","t"],["intrep","Repairs / safety issues","ta"]]],
+["Measurements",[["dims","Exterior dimensions notes","ta"],["gla","GLA (sq ft)","n",1],["bg","Below-grade (sq ft)","n"],["garea","Garage area (sq ft)","n"],["ph_sk","Sketch photo","ph"]]],
+["Quality & condition",[["q","Quality","s",QC,1],["c","Condition","s",CC,1],["qcwhy","Reasons / deficiencies / updates","ta",1]]],
+["Updates timeline",[["u_kit","Kitchen","s",AGE],["u_bath","Bathrooms","s",AGE],["u_floor","Flooring","s",AGE],["u_paint","Paint","s",AGE],["u_roof","Roof","s",AGE],
+["u_win","Windows","s",AGE],["u_hvac","HVAC","s",AGE],["u_plumb","Plumbing","s",AGE],["u_elec","Electrical","s",AGE],["u_oth","Other (item + when)","t"]]],
+["Comps drive-by",[1,2,3,4,5,6].flatMap(i=>[["c"+i+"a","Comp "+i+" address","t"],["c"+i+"n","Comp "+i+" notes (condition, view, influences)","t"]]).concat([["ph_comp","Comp photos","ph"]])],
+["Before leaving",[["photocount","Total photos taken","n",1],["permits","Owner: permits / unpermitted work","t"],["recent","Owner: recent sale / transfer","t"],["conc","Owner: concessions / seller credits","t"],["ocom","Other owner comments","ta"]]]
+];
+const K="cpvfi_",LS=localStorage;let cur=null,D={};
+const $=id=>document.getElementById(id);
+function jobs(){return JSON.parse(LS.getItem(K+"index")||"[]")}
+function setJobs(a){LS.setItem(K+"index",JSON.stringify(a))}
+function save(){if(!cur)return;D.address=$("addr").value;try{LS.setItem(K+cur,JSON.stringify(D));const a=jobs(),j=a.find(x=>x.id===cur);if(j){j.addr=D.address;j.t=Date.now()}setJobs(a);$("st").textContent="Saved "+new Date().toLocaleTimeString();$("warn").textContent=""}catch(e){$("warn").textContent="⚠ Storage full — photo not saved. Export JSON or delete old jobs."}usage();refreshJobs();prog()}
+function usage(){let n=0;for(let i=0;i<LS.length;i++){const k=LS.key(i);n+=(LS.getItem(k)||"").length}if(n>4e6)$("warn").textContent="⚠ Storage nearly full ("+(n/1e6).toFixed(1)+" MB of ~5). Export and delete old jobs."}
+function refreshJobs(){const s=$("jobs");s.innerHTML="";jobs().sort((a,b)=>b.t-a.t).forEach(j=>{const o=document.createElement("option");o.value=j.id;o.textContent=j.addr||"(no address) "+new Date(j.t).toLocaleDateString();s.appendChild(o)});s.value=cur}
+function newJob(){cur="j"+Date.now();D={};const a=jobs();a.push({id:cur,addr:"",t:Date.now()});setJobs(a);LS.setItem(K+cur,"{}");load(cur)}
+function load(id){cur=id;D=JSON.parse(LS.getItem(K+id)||"{}");LS.setItem(K+"last",id);render();refreshJobs()}
+function el(t,p){const e=document.createElement(t);Object.assign(e,p||{});return e}
+function render(){$("addr").value=D.address||"";const w=$("secs");const open=[...w.querySelectorAll(".card.open")].map(x=>x.dataset.i);w.innerHTML="";
+S.forEach(([name,fs],i)=>{const c=el("div",{className:"card"});c.dataset.i=i;if(open.includes(""+i))c.classList.add("open");
+const h=el("div",{className:"sh"});h.innerHTML=(i+1)+". "+name+' <span class="pc" id="pc'+i+'"></span>';h.onclick=()=>c.classList.toggle("open");
+const b=el("div",{className:"sb"});fs.forEach(f=>b.appendChild(field(f)));c.append(h,b);w.appendChild(c)});prog()}
+function field([id,lab,ty,o]){const req=o===1||(Array.isArray(o)&&false);const wrap=el("div");
+if(ty==="h"){wrap.className="sub";wrap.textContent=lab;return wrap}
+if(ty==="c"){const l=el("label",{className:"ck"});const i=el("input",{type:"checkbox",checked:!!D[id]});i.onchange=()=>{D[id]=i.checked;save()};l.append(i,document.createTextNode(lab+(o===1?" *":"")));return l}
+const l=el("label",{className:"f"+(o===1?" req":""),textContent:lab});wrap.appendChild(l);let i;
+if(ty==="s"){i=el("select");o.forEach(v=>i.appendChild(el("option",{value:v,textContent:v||"—"})))}
+else if(ty==="ta")i=el("textarea");
+else if(ty==="ph"){i=el("input",{type:"file",accept:"image/*",multiple:true});i.setAttribute("capture","environment");const th=el("div",{className:"th"});
+const draw=()=>{th.innerHTML="";(D[id]||[]).forEach((u,k)=>{const d=el("div"),im=el("img",{src:u}),x=el("b",{textContent:"×"});x.onclick=()=>{if(confirm("Remove photo?")){D[id].splice(k,1);save();draw()}};d.append(im,x);th.appendChild(d)})};
+i.onchange=async()=>{for(const f of i.files){try{(D[id]=D[id]||[]).push(await shrink(f));save()}catch(e){}}i.value="";draw()};draw();wrap.append(i,th);return wrap}
+else i=el("input",{type:{t:"text",n:"number",d:"date",tm:"time"}[ty]});if(ty==="n")i.inputMode="decimal";
+i.id="f_"+id;i.value=D[id]||"";i.oninput=i.onchange=()=>{D[id]=i.value;save()};wrap.appendChild(i);return wrap}
+function shrink(f){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const s=Math.min(1,1280/Math.max(im.width,im.height));const c=document.createElement("canvas");c.width=im.width*s;c.height=im.height*s;c.getContext("2d").drawImage(im,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",0.7))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(f)})}
+const filled=(f)=>{const v=D[f[0]];return Array.isArray(v)?v.length>0:!!v&&v!==""};
+function prog(){S.forEach(([n,fs],i)=>{const q=fs.filter(f=>f[2]!=="h");const p=$("pc"+i);if(p)p.textContent=q.filter(filled).length+"/"+q.length})}
+function summary(){const L=["CPV FIELD INSPECTION","Property: "+(D.address||"(no address)"),"Exported: "+new Date().toLocaleString(),""],miss=[];let np=0;
+if(!D.address)miss.push("Property address");
+S.forEach(([n,fs])=>{const out=[];fs.forEach(f=>{const [id,lab,ty,o]=f;if(ty==="h")return;const v=D[id];
+if(ty==="ph"){if(v&&v.length){out.push("- "+lab+": "+v.length+" attached");np+=v.length}}
+else if(filled(f))out.push("- "+lab+": "+(ty==="c"?"Yes":v));if(o===1&&!filled(f))miss.push(n+": "+lab)});
+if(out.length)L.push("== "+n.toUpperCase()+" ==",...out,"")});
+
+L.push(miss.length?"UNANSWERED REQUIRED ITEMS:\n"+miss.map(m=>"- "+m).join("\n"):"All required items answered.");return{t:L.join("\n"),np}}
+function photoFiles(){const fl=[];S.forEach(([n,fs])=>fs.forEach(([id,,ty])=>{if(ty==="ph")(D[id]||[]).forEach((u,k)=>{const b=atob(u.split(",")[1]),a=new Uint8Array(b.length);for(let i=0;i<b.length;i++)a[i]=b.charCodeAt(i);fl.push(new File([a],id+"_"+(k+1)+".jpg",{type:"image/jpeg"}))})}));return fl}
+async function send(){save();const {t}=summary();const title="Field inspection: "+(D.address||"");const fl=photoFiles();
+try{if(navigator.share){if(fl.length&&navigator.canShare&&navigator.canShare({files:fl})){await navigator.share({title,text:t,files:fl});return}await navigator.share({title,text:t});return}}catch(e){if(e.name==="AbortError")return}
+try{await navigator.clipboard.writeText(t)}catch(e){}
+const o=$("out");o.innerHTML="";o.append(el("div",{textContent:"Summary copied to clipboard (if allowed). "}),el("a",{href:"mailto:"+EMAIL+"?subject="+encodeURIComponent(title)+"&body="+encodeURIComponent(t.slice(0,1800)),textContent:"Open email to "+EMAIL}),el("pre",{textContent:t,style:"white-space:pre-wrap"}))}
+function exportJSON(){save();const a=el("a",{href:URL.createObjectURL(new Blob([JSON.stringify(D,null,1)],{type:"application/json"})),download:"inspection_"+(D.address||"job").replace(/\W+/g,"_")+".json"});document.body.appendChild(a);a.click();a.remove()}
+$("addr").oninput=save;$("newj").onclick=newJob;$("jobs").onchange=e=>load(e.target.value);
+$("delj").onclick=()=>{if(!cur||!confirm("Delete this inspection and its photos? This cannot be undone."))return;LS.removeItem(K+cur);setJobs(jobs().filter(j=>j.id!==cur));const a=jobs();a.length?load(a[0].id):newJob()};
+$("send").onclick=send;$("exp").onclick=exportJSON;
+// icon + manifest
+(function(){const c=document.createElement("canvas");c.width=c.height=180;const g=c.getContext("2d");g.fillStyle="#1f4e79";g.fillRect(0,0,180,180);g.fillStyle="#fff";g.font="bold 64px sans-serif";g.textAlign="center";g.textBaseline="middle";g.fillText("CPV",90,92);const u=c.toDataURL("image/png");
+$("icon").href=u;$("aicon").href=u;$("mf").href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify({name:"CPV Field Inspection",short_name:"CPV Inspect",display:"standalone",start_url:".",theme_color:"#1f4e79",background_color:"#ffffff",icons:[{src:u,sizes:"180x180",type:"image/png"}]}))})();
+(function(){const l=LS.getItem(K+"last");if(l&&jobs().some(j=>j.id===l))load(l);else if(jobs().length)load(jobs()[0].id);else newJob()})();
+</script></body></html>
