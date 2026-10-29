@@ -1,0 +1,44 @@
+{
+ "id": "mvt1jrp8xd54o",
+ "created": "2026-10-29T04:26:23.589Z",
+ "updated": "2026-10-29T04:26:23.589Z",
+ "app": "cpv-uad36-inspect",
+ "version": 3,
+ "status": "Prefilled",
+ "data": {
+  "fileNo": "AVS #1180543 (FNMA 1004 / UAD 3.6)",
+  "client": "Applied Valuation Services",
+  "prefillSrc": [
+   "Public records",
+   "CRMLS"
+  ],
+  "owner": "Aniket A. & Ami A. Kawatkar",
+  "street": "12853 Berkhamsted St",
+  "city": "Cerritos",
+  "zip": "90703",
+  "pud": "Yes",
+  "structures": [
+   {
+    "yearBuilt": "1979"
+   }
+  ],
+  "vsNone": "No",
+  "vs": [
+   {
+    "type": "Garage",
+    "attach": "Attached",
+    "spaces": "2"
+   }
+  ],
+  "amNone": "No",
+  "amWater": [
+   "Inground Pool",
+   "Inground Spa"
+  ],
+  "followUp": [
+   "HOA / project info"
+  ],
+  "notes": "PREFILL (records/MLS, not observed). LA County. APN 7044-037-024. Legal: Tr=32239 Lot 24. Lot 7,449 sf. GLA 2,665 sf (records). MLS: 3 bd / 2 full + 1 half bath. HOA $160/mo per 2014 MLS (may be outdated).\nVERIFY ON SITE: number of stories (records say 1 level, MLS remarks say two-story); bed/bath count; current HOA dues; pool and spa."
+ },
+ "jobId": "job-12853-berkhamsted"
+}
